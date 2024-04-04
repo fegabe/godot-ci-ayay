@@ -1,0 +1,9 @@
+# Godot 4+ specific ignores
+.godot/
+exports/
+
+# builds output folder
+builds/
+
+# fmod library
+addons/fmod/

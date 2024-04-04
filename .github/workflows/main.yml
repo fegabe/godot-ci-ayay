@@ -1,0 +1,81 @@
+name: Build + Deploy ✨
+on: workflow_dispatch
+
+env:
+  ITCHIO_USERNAME: taletronic
+  ITCHIO_GAME: godot-ci-ayay
+  EXPORT_NAME: godot-ci-ayay
+  EXPORT_PATH: ./builds
+  BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+  # if you change it, remember to update the image version below
+  GODOT_VERSION: 4.2.1 
+
+jobs:
+  buildAndDeploy:
+    name: Build and deploy to itch.io
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: barichello/godot-ci:4.2.1
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # required for the semantic-version action in order to get search for tags in the commit history
+          fetch-depth: 0
+
+      # Fix to allow running git commands (as required by semantic-version action). 
+      # If this is not included we get the error "detected dubious ownership". 
+      # See: https://github.com/actions/runner/issues/2033
+      - name: Set ownership
+        run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
+      - name: Calculate application Version
+        id: application_version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          user_format_type: "json"
+          tag_prefix: "v"
+          version_format: "v${major}.${minor}.${patch}-${increment}"
+          debug: true
+
+      - name: Restore FMOD plugin fmod-gdextension from cache
+        id: cache-fmod
+        uses: actions/cache@v4
+        with:
+          path: addons/fmod
+          key: |
+            fmod-${{ hashFiles('addons/fmod/libs') }}
+            fmod-
+
+      - name: Download FMOD plugin fmod-gdextension if not cached
+        if: ${{ steps.cache-fmod.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        run: |
+          ./scripts/download_fmod_library.sh
+
+      - name: Setup Godot export templates
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Generate project version
+        env:
+          VERSION: ${{ steps.application_version.outputs.version }}
+        run: |
+          echo "--- VERSION ---"
+          echo "Setting project version to $VERSION"
+          ./scripts/set_project_version.sh $VERSION
+
+      - name: Complete editor import before building
+        run: |
+          # Wait for godot to finish import. See: https://github.com/alessandrofama/fmod-for-godot/issues/23
+          godot --editor --headless & sleep 5 && ./scripts/monitor-import.sh
+
+      - name: Windows Build + Itch.io Deploy 🚀
+        run: |
+          ./scripts/build_and_push_to_itchio.sh win $EXPORT_PATH/win/$ITCHIO_GAME.exe $ITCHIO_USERNAME $ITCHIO_GAME
