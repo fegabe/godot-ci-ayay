@@ -5,6 +5,8 @@ extends Node2D
 
 var _is_shouting = false
 
+I'm an error! :D
+
 func _ready():
 	var version = ProjectSettings.get_setting("application/config/version")
 	version_label.text = str(version)
