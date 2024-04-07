@@ -19,8 +19,8 @@ Run next script:
 
 Download the library https://github.com/utopia-rise/fmod-gdextension/releases/download/4.1.0-4.2.0/addons.zip and unzip it under `addons/fmod/`
 
-## 3. Check that fmod plugin is enabled at Project Settings -> Plugins
+## 2. Check that fmod plugin is enabled at Project Settings -> Plugins
 
-## 2. Restart the project (Godot will ask for it)
+## 3. Restart the project (Godot will ask for it)
 
 And have shout! 😱
